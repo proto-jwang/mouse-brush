@@ -312,15 +312,20 @@ def _process_video(
     print(f"\n{'='*60}\n{tag} Processing: {video_path.name}", flush=True)
 
     try:
-        # Step 1 — Convert to 1 FPS (keep all frames)
+        # Step 1 — Convert to 1 FPS if needed
         orig_fps = _get_orig_fps(str(video_path))
         print(f"{tag} Original FPS : {orig_fps}")
-        print(f"{tag} [1/3] Converting to 1 FPS ...", flush=True)
-        _make_1fps(str(video_path), str(tmp_1fps), orig_fps)
+        if orig_fps == 1.0:
+            print(f"{tag} [1/3] Already 1 FPS — skipping conversion.", flush=True)
+            src_1fps = str(video_path)
+        else:
+            print(f"{tag} [1/3] Converting to 1 FPS ...", flush=True)
+            _make_1fps(str(video_path), str(tmp_1fps), orig_fps)
+            src_1fps = str(tmp_1fps)
 
         # Step 2 — Burn white frame-index labels (for Gemini upload)
         print(f"{tag} [2/3] Burning frame labels ...", flush=True)
-        _make_labeled(str(tmp_1fps), str(labeled_mp4))
+        _make_labeled(src_1fps, str(labeled_mp4))
 
         # Step 3 — Gemini detection
         print(f"{tag} [3/3] Uploading to Gemini & detecting ...", flush=True)
@@ -337,7 +342,7 @@ def _process_video(
         if visualize:
             print(f"{tag} [vis] Generating visualization video ({vis_fps} FPS) ...", flush=True)
             _make_visualization(
-                str(tmp_1fps), str(vis_mp4),
+                src_1fps, str(vis_mp4),
                 result["L"], result["R"], vis_fps,
             )
             print(f"{tag} Saved: {vis_mp4}")
