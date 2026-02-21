@@ -349,8 +349,8 @@ def main() -> None:
         help="Root directory for all outputs (one sub-folder per video).",
     )
     parser.add_argument(
-        "--model", default="gemini-3-flash-preview",
-        help="Gemini model name (default: gemini-3-flash-preview).",
+        "--model", default="gemini-2.5-pro",
+        help="Gemini model name (default: gemini-2.5-pro).",
     )
     parser.add_argument(
         "--temperature", type=float, default=0.0,

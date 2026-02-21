@@ -104,7 +104,7 @@ def _require_api_key() -> str:
 
 def detect_brush_events_1fps(
     video_path: str,
-    model: str = "gemini-3-flash-preview",
+    model: str = "gemini-2.5-pro",
     temperature: float = 0.0,
 ) -> Dict[str, Optional[int]]:
     """
@@ -179,7 +179,7 @@ def detect_brush_events_1fps(
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--video", required=True, help="Path to 1-FPS video file.")
-    parser.add_argument("--model", default="gemini-3-flash-preview", help="Gemini model name.")
+    parser.add_argument("--model", default="gemini-2.5-pro", help="Gemini model name.")
     parser.add_argument("--temperature", type=float, default=0.0, help="Sampling temperature.")
     args = parser.parse_args()
 
