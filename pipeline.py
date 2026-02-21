@@ -39,7 +39,7 @@ from google import genai
 from google.genai import types
 
 
-# ── Prompt & response schema (kept in sync with generate_brush_frame_indices.py) ─
+# ── Prompt & response schema ───────────────────────────────────────────────────
 
 PROMPT_EN = """\
 You are analyzing a scientific experiment video.
@@ -81,6 +81,8 @@ Return strictly valid JSON matching this schema:
 _RANGE_SCHEMA: Dict[str, Any] = {
     "type": "array",
     "items": {"type": "integer"},
+    "minItems": 2,
+    "maxItems": 2,
     "description": "[start_frame, end_frame] of full brush-foot contact.",
 }
 
