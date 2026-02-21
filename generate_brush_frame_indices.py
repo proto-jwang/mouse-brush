@@ -48,7 +48,7 @@ There are two mice in the video:
 (Use screen-left / screen-right. Do NOT use the animal's anatomical left/right.)
 
 A human uses a small BRUSH to stimulate the BACK LEFT FOOT of each mouse.
-Each side (L and R) occurs at most once in this video: 0 or 1 event per side.
+Each side (L and R) must be brushed EXACTLY ONCE per video. This is the expected normal case.
 
 Event definition:
 - The target is always the BACK LEFT FOOT of the mouse (the hind paw on the mouse's anatomical left side).
@@ -58,9 +58,11 @@ Event definition:
 - If full contact spans multiple frames, report the FIRST frame where full contact is achieved.
 - Do NOT count partial contact, near-miss, or approach frames.
 
-Uncertainty rule:
-- If you cannot confidently determine whether full brush-foot contact happened for L or R,
-  set that field to null and explain briefly in notes. Do NOT guess.
+Validity rule — set the field to null and explain in notes if ANY of the following is true:
+- The mouse is never brushed (0 events detected for that side).
+- The mouse is brushed MORE THAN ONCE (2+ distinct brush contacts detected for that side).
+- You cannot confidently determine whether exactly one full brush-foot contact occurred.
+Do NOT guess. Only return an integer when you are confident there is exactly one clear event.
 
 Return strictly valid JSON matching this schema:
 {
