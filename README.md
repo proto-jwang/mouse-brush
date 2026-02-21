@@ -26,15 +26,85 @@ This tool processes videos from a neuroscience experiment in which a researcher 
 | `generate_brush_frame_indices.py` | Single-video detector; also importable as a library. |
 | `prepare_video.sh` | Shell helper to convert one video to 1 FPS with frame labels burned in. |
 
-## Requirements
+## Setup
 
-- Python 3.9+
-- `ffmpeg` and `ffprobe` (must be on `PATH`)
-- Google Gemini API access
+### macOS / Linux
+
+**1. Install Python 3.9+**
+
+```bash
+# macOS (Homebrew)
+brew install python
+
+# Ubuntu / Debian
+sudo apt install python3 python3-pip
+```
+
+**2. Install ffmpeg**
+
+```bash
+# macOS
+brew install ffmpeg
+
+# Ubuntu / Debian
+sudo apt install ffmpeg
+```
+
+**3. Install Python dependencies**
 
 ```bash
 pip install -U google-genai
+```
+
+**4. Set Gemini API key**
+
+```bash
 export GEMINI_API_KEY="YOUR_KEY"
+```
+
+Add it to `~/.bashrc` or `~/.zshrc` to make it permanent.
+
+---
+
+### Windows
+
+**1. Install Python 3.9+**
+
+Download from [python.org](https://www.python.org/downloads/) and check **"Add Python to PATH"** during installation.
+
+**2. Install ffmpeg**
+
+- Download a build from [ffmpeg.org/download](https://ffmpeg.org/download.html) (e.g. the gyan.dev release)
+- Extract and add the `bin/` folder to your system `PATH`:
+  - Search "Environment Variables" → Edit `Path` → Add the path to `ffmpeg\bin`
+- Verify: open Command Prompt and run `ffmpeg -version`
+
+**3. Install Python dependencies**
+
+```cmd
+pip install -U google-genai
+```
+
+**4. Set Gemini API key**
+
+```cmd
+:: Temporary (current session only)
+set GEMINI_API_KEY=YOUR_KEY
+
+:: Permanent (via PowerShell)
+[System.Environment]::SetEnvironmentVariable("GEMINI_API_KEY","YOUR_KEY","User")
+```
+
+**5. Run the pipeline**
+
+Use Command Prompt or PowerShell (the `prepare_video.sh` shell script is macOS/Linux only; use `pipeline.py` directly on Windows):
+
+```cmd
+python pipeline.py ^
+    --input-dir  C:\path\to\videos ^
+    --output-dir C:\path\to\results ^
+    --visualize ^
+    --n-brushed-frames 5
 ```
 
 ## Quick Start
