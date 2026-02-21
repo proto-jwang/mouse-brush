@@ -1,6 +1,6 @@
 # Mouse Brush
 
-Automated detection of brush-stimulation events in two-mouse experiment videos using Google Gemini.
+Automated detection of brush-stimulation events in two-mouse experiment videos using Google Gemini AI.
 
 ## Demo
 
@@ -8,128 +8,323 @@ https://github.com/user-attachments/assets/3133d97f-0f17-4ca2-9beb-503e0e67b106
 
 > Detected brush frames are highlighted in **red**; all other frames use white labels.
 
-## Overview
+## What Does This Tool Do?
 
-This tool processes videos from a neuroscience experiment in which a researcher uses a small brush to stimulate the back left foot of two mice (left mouse = L, right mouse = R). It:
+This tool automatically finds the exact video frame when a researcher brushes the back left foot of each mouse. It:
 
-1. Re-encodes each input video to 1 FPS (preserving every original frame)
-2. Burns a visible frame index label into the top-right corner of each frame
-3. Uploads the labeled video to the Gemini API for visual analysis
-4. Returns the first frame index at which full brush–paw contact occurs for each mouse (`L` / `R`)
-5. Optionally generates a visualization video with detected frames highlighted in red
+1. Takes your experiment videos as input
+2. Converts each video to 1 frame per second (so every original frame is preserved)
+3. Numbers each frame visibly in the top-right corner
+4. Sends the video to Google's Gemini AI, which watches the video and identifies the exact frame where the brush makes full contact with each mouse's paw
+5. Saves the result as a JSON file (left mouse = `L`, right mouse = `R`)
+6. Optionally saves a new video with the detected frames highlighted in red
 
-## Files
+---
 
-| File | Description |
-|------|-------------|
-| `pipeline.py` | **Main script.** Batch-processes a directory of videos in parallel. |
-| `generate_brush_frame_indices.py` | Single-video detector; also importable as a library. |
-| `prepare_video.sh` | Shell helper to convert one video to 1 FPS with frame labels burned in. |
+## Setup Instructions
 
-## Setup
+Follow the section for your operating system. **Complete every step in order.**
 
-### macOS / Linux
+---
 
-**1. Install Python 3.9+**
+### macOS
+
+#### Step 1 — Install Homebrew (a package manager for macOS)
+
+Homebrew lets you install software from the Terminal with simple commands.
+
+1. Open **Terminal** (press `Command + Space`, type `Terminal`, press Enter)
+2. Paste the following command and press Enter:
 
 ```bash
-# macOS (Homebrew)
-brew install python
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
 
-# Ubuntu / Debian
+3. Follow the on-screen prompts. It may ask for your Mac password — type it and press Enter (the cursor won't move while typing, that's normal).
+4. When it finishes, verify it worked:
+
+```bash
+brew --version
+```
+
+You should see something like `Homebrew 4.x.x`.
+
+---
+
+#### Step 2 — Install Python
+
+```bash
+brew install python
+```
+
+Verify:
+
+```bash
+python3 --version
+```
+
+You should see `Python 3.x.x`.
+
+---
+
+#### Step 3 — Install ffmpeg
+
+ffmpeg is a free tool that processes video files. This tool requires it.
+
+```bash
+brew install ffmpeg
+```
+
+This may take a few minutes. Verify:
+
+```bash
+ffmpeg -version
+```
+
+You should see a version number on the first line.
+
+---
+
+#### Step 4 — Install the Python library
+
+```bash
+pip3 install -U google-genai
+```
+
+---
+
+#### Step 5 — Get a Gemini API Key
+
+1. Go to [https://aistudio.google.com/apikey](https://aistudio.google.com/apikey) and sign in with your Google account
+2. Click **"Create API key"**
+3. Copy the key (it looks like a long string of letters and numbers)
+
+---
+
+#### Step 6 — Set your API Key
+
+In Terminal, run the following (replace `YOUR_KEY` with the key you copied):
+
+```bash
+echo 'export GEMINI_API_KEY="YOUR_KEY"' >> ~/.zshrc
+source ~/.zshrc
+```
+
+Verify it was saved:
+
+```bash
+echo $GEMINI_API_KEY
+```
+
+Your key should be printed.
+
+---
+
+### Linux (Ubuntu / Debian)
+
+#### Step 1 — Install Python
+
+Open a Terminal and run:
+
+```bash
+sudo apt update
 sudo apt install python3 python3-pip
 ```
 
-**2. Install ffmpeg**
+Verify:
 
 ```bash
-# macOS
-brew install ffmpeg
+python3 --version
+```
 
-# Ubuntu / Debian
+---
+
+#### Step 2 — Install ffmpeg
+
+```bash
 sudo apt install ffmpeg
 ```
 
-**3. Install Python dependencies**
+Verify:
 
 ```bash
-pip install -U google-genai
+ffmpeg -version
 ```
 
-**4. Set Gemini API key**
+---
+
+#### Step 3 — Install the Python library
 
 ```bash
-export GEMINI_API_KEY="YOUR_KEY"
+pip3 install -U google-genai
 ```
 
-Add it to `~/.bashrc` or `~/.zshrc` to make it permanent.
+---
+
+#### Step 4 — Get a Gemini API Key
+
+1. Go to [https://aistudio.google.com/apikey](https://aistudio.google.com/apikey) and sign in with your Google account
+2. Click **"Create API key"**
+3. Copy the key
+
+---
+
+#### Step 5 — Set your API Key
+
+```bash
+echo 'export GEMINI_API_KEY="YOUR_KEY"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+Verify:
+
+```bash
+echo $GEMINI_API_KEY
+```
 
 ---
 
 ### Windows
 
-**1. Install Python 3.9+**
+#### Step 1 — Install Python
 
-Download from [python.org](https://www.python.org/downloads/) and check **"Add Python to PATH"** during installation.
+1. Go to [https://www.python.org/downloads/](https://www.python.org/downloads/) and click **"Download Python 3.x.x"**
+2. Run the downloaded installer
+3. **Important:** On the first screen of the installer, check the box that says **"Add Python to PATH"** before clicking Install
+4. Click **"Install Now"** and wait for it to finish
 
-**2. Install ffmpeg**
+Verify: open **Command Prompt** (press `Windows + R`, type `cmd`, press Enter) and run:
 
-- Download a build from [ffmpeg.org/download](https://ffmpeg.org/download.html) (e.g. the gyan.dev release)
-- Extract and add the `bin/` folder to your system `PATH`:
-  - Search "Environment Variables" → Edit `Path` → Add the path to `ffmpeg\bin`
-- Verify: open Command Prompt and run `ffmpeg -version`
+```cmd
+python --version
+```
 
-**3. Install Python dependencies**
+You should see `Python 3.x.x`.
+
+---
+
+#### Step 2 — Install ffmpeg
+
+ffmpeg does not have a standard installer on Windows — follow these steps carefully:
+
+1. Go to [https://www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/)
+2. Under **"release builds"**, download `ffmpeg-release-essentials.zip`
+3. Extract the zip file (right-click → "Extract All") — you can extract it to `C:\ffmpeg`
+4. Inside the extracted folder, find the `bin` folder (e.g. `C:\ffmpeg\ffmpeg-7.x-essentials_build\bin`)
+5. Add this `bin` folder to your system PATH:
+   - Press `Windows + S` and search for **"Edit the system environment variables"**, click it
+   - Click **"Environment Variables"** at the bottom
+   - Under **"System variables"**, click on `Path` then click **"Edit"**
+   - Click **"New"** and paste the full path to the `bin` folder (e.g. `C:\ffmpeg\ffmpeg-7.x-essentials_build\bin`)
+   - Click **OK** on all windows to save
+
+6. Close and reopen Command Prompt, then verify:
+
+```cmd
+ffmpeg -version
+```
+
+You should see a version number.
+
+---
+
+#### Step 3 — Install the Python library
+
+In Command Prompt:
 
 ```cmd
 pip install -U google-genai
 ```
 
-**4. Set Gemini API key**
+---
+
+#### Step 4 — Get a Gemini API Key
+
+1. Go to [https://aistudio.google.com/apikey](https://aistudio.google.com/apikey) and sign in with your Google account
+2. Click **"Create API key"**
+3. Copy the key
+
+---
+
+#### Step 5 — Set your API Key
+
+In Command Prompt (replace `YOUR_KEY` with your actual key):
 
 ```cmd
-:: Temporary (current session only)
-set GEMINI_API_KEY=YOUR_KEY
-
-:: Permanent (via PowerShell)
-[System.Environment]::SetEnvironmentVariable("GEMINI_API_KEY","YOUR_KEY","User")
+setx GEMINI_API_KEY "YOUR_KEY"
 ```
 
-**5. Run the pipeline**
-
-Use Command Prompt or PowerShell (the `prepare_video.sh` shell script is macOS/Linux only; use `pipeline.py` directly on Windows):
+Close and reopen Command Prompt for the change to take effect. Verify:
 
 ```cmd
-python pipeline.py ^
-    --input-dir  C:\path\to\videos ^
-    --output-dir C:\path\to\results ^
-    --visualize ^
-    --n-brushed-frames 5
+echo %GEMINI_API_KEY%
 ```
 
-## Quick Start
+Your key should be printed.
 
-### Batch pipeline (recommended)
+---
 
+## Download This Tool
+
+1. Go to [https://github.com/proto-jwang/mouse-brush](https://github.com/proto-jwang/mouse-brush)
+2. Click the green **"Code"** button → **"Download ZIP"**
+3. Extract the ZIP to a folder, e.g. `C:\mouse-brush` (Windows) or `~/mouse-brush` (Mac/Linux)
+
+---
+
+## Running the Tool
+
+Open Terminal (Mac/Linux) or Command Prompt (Windows) and navigate to the folder where you extracted the tool.
+
+**Mac/Linux:**
 ```bash
-python pipeline.py \
-    --input-dir  /path/to/videos \
-    --output-dir /path/to/results \
+cd ~/mouse-brush
+```
+
+**Windows:**
+```cmd
+cd C:\mouse-brush
+```
+
+### Basic usage
+
+Place all your video files in a single folder (e.g. `videos/`). Then run:
+
+**Mac/Linux:**
+```bash
+python3 pipeline.py \
+    --input-dir  videos/ \
+    --output-dir results/ \
     --visualize \
     --n-brushed-frames 5
 ```
 
-For each video the pipeline creates a sub-folder under `--output-dir` containing:
+**Windows:**
+```cmd
+python pipeline.py ^
+    --input-dir  videos\ ^
+    --output-dir results\ ^
+    --visualize ^
+    --n-brushed-frames 5
+```
+
+The tool will process every video in the `videos/` folder and save results to `results/`.
+
+---
+
+## Understanding the Output
+
+For each video, a sub-folder is created under `results/`:
 
 ```
-<output-dir>/
-  <video-stem>/
-    <video-stem>_labeled.mp4   # 1-FPS video with frame indices burned in
-    result.json                 # detection result
-    <video-stem>_vis.mp4        # visualization video (if --visualize)
+results/
+  group_1/
+    group_1_labeled.mp4    ← video with frame numbers burned in
+    result.json            ← detected frame indices
+    group_1_vis.mp4        ← visualization with red highlights (if --visualize)
 ```
 
-`result.json` format:
+**result.json** example:
 
 ```json
 {
@@ -140,54 +335,32 @@ For each video the pipeline creates a sub-folder under `--output-dir` containing
 }
 ```
 
-`L` / `R` are integer frame indices (0-based) or `null` if no event was detected.
+- `L` — frame index (0-based) when the brush first fully contacts the **left mouse's** back left paw
+- `R` — frame index for the **right mouse**
+- `null` — means the mouse was never brushed, was brushed more than once, or the contact was ambiguous
 
-### Single video
+---
 
-```bash
-python generate_brush_frame_indices.py \
-    --video /path/to/video_1fps.mp4 \
-    --model gemini-2.0-flash
-```
+## Options Reference
 
-### Shell helper (prepare one video manually)
-
-```bash
-chmod +x prepare_video.sh
-./prepare_video.sh input.mp4
-# produces input_1fps_labeled.mp4
-```
-
-## CLI Reference
-
-### `pipeline.py`
-
-| Argument | Default | Description |
-|----------|---------|-------------|
-| `--input-dir` | *(required)* | Directory of input video files |
-| `--output-dir` | *(required)* | Root output directory |
-| `--model` | `gemini-3-flash-preview` | Gemini model name |
-| `--temperature` | `0.0` | Sampling temperature (0 = deterministic) |
-| `--visualize` | off | Save visualization video with detected frames highlighted |
-| `--n-brushed-frames` | `5` | Frames after brush onset to highlight in red |
-| `--vis-fps` | `10` | FPS of output visualization video |
-| `--workers` | `4` | Number of videos processed in parallel |
-
-### `generate_brush_frame_indices.py`
-
-| Argument | Default | Description |
-|----------|---------|-------------|
-| `--video` | *(required)* | Path to a 1-FPS labeled video |
-| `--model` | `gemini-3-flash-preview` | Gemini model name |
-| `--temperature` | `0.0` | Sampling temperature |
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--input-dir` | *(required)* | Folder containing your video files |
+| `--output-dir` | *(required)* | Folder where results will be saved |
+| `--visualize` | off | Also save a video with brush frames highlighted in red |
+| `--n-brushed-frames` | `5` | How many frames after the brush contact to highlight |
+| `--workers` | `4` | How many videos to process at the same time |
+| `--model` | `gemini-2.5-pro` | Gemini model to use |
 
 ## Supported Video Formats
 
 `.mp4`, `.avi`, `.mov`, `.mkv`, `.m4v`
 
+---
+
 ## Notes
 
-- Frame indices are **0-based** and read directly from the burned-in label, not inferred from timestamps.
-- The model identifies **full brush-paw contact** only — partial contact or approach frames are ignored.
-- If the model cannot confidently determine an event, it returns `null` and explains in the `notes` field.
-- The pipeline retries Gemini API calls on transient 503/429 errors with exponential backoff.
+- Frame indices are **0-based** (the first frame is Frame 0).
+- The AI only counts **full brush-paw contact** — partial contact or near-miss frames are ignored.
+- Each mouse must be brushed **exactly once** per video. If a mouse is not brushed, or is brushed more than once, the result will be `null`.
+- The tool automatically retries if the Gemini API is temporarily unavailable.
