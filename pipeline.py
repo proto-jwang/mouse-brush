@@ -81,8 +81,6 @@ Return strictly valid JSON matching this schema:
 _RANGE_SCHEMA: Dict[str, Any] = {
     "type": "array",
     "items": {"type": "integer"},
-    "minItems": 2,
-    "maxItems": 2,
     "description": "[start_frame, end_frame] of full brush-foot contact.",
 }
 
