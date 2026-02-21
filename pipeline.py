@@ -194,7 +194,7 @@ def _make_visualization(
         red   = _DT_BASE + f":fontcolor=red:enable={hi}"
         vf = f"{white},{red}"
 
-    _run_ffmpeg(["-i", src_1fps, "-vf", vf, "-r", str(vis_fps), dst])
+    _run_ffmpeg(["-i", src_1fps, "-vf", f"setpts=PTS/{vis_fps},{vf}", "-r", str(vis_fps), dst])
 
 
 # ── Gemini detection ───────────────────────────────────────────────────────────
