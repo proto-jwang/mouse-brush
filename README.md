@@ -10,7 +10,7 @@ https://github.com/user-attachments/assets/3133d97f-0f17-4ca2-9beb-503e0e67b106
 
 ## What Does This Tool Do?
 
-This tool automatically finds the exact video frame when a researcher brushes the back left foot of each mouse. It:
+This tool automatically finds the exact video frame when a researcher brushes the left hind paw of each mouse. It:
 
 1. Takes your experiment videos as input
 2. Converts each video to 1 frame per second (so every original frame is preserved)
@@ -295,8 +295,7 @@ Place all your video files in a single folder (e.g. `videos/`). Then run:
 python3 pipeline.py \
     --input-dir  videos/ \
     --output-dir results/ \
-    --visualize \
-    --n-brushed-frames 5
+    --visualize
 ```
 
 **Windows:**
@@ -304,8 +303,7 @@ python3 pipeline.py \
 python pipeline.py ^
     --input-dir  videos\ ^
     --output-dir results\ ^
-    --visualize ^
-    --n-brushed-frames 5
+    --visualize
 ```
 
 The tool will process every video in the `videos/` folder and save results to `results/`.
@@ -329,14 +327,14 @@ results/
 ```json
 {
   "video": "group_1.mp4",
-  "L": 42,
-  "R": 87,
+  "L": [42, 45],
+  "R": [87, 90],
   "notes": "Clear contact visible for both sides."
 }
 ```
 
-- `L` — frame index (0-based) when the brush first fully contacts the **left mouse's** back left paw
-- `R` — frame index for the **right mouse**
+- `L` — `[start, end]` frame range (0-based) of full brush contact with the **left mouse's** left hind paw
+- `R` — `[start, end]` frame range for the **right mouse**
 - `null` — means the mouse was never brushed, was brushed more than once, or the contact was ambiguous
 
 ---
@@ -348,7 +346,6 @@ results/
 | `--input-dir` | *(required)* | Folder containing your video files |
 | `--output-dir` | *(required)* | Folder where results will be saved |
 | `--visualize` | off | Also save a video with brush frames highlighted in red |
-| `--n-brushed-frames` | `5` | How many frames after the brush contact to highlight |
 | `--workers` | `4` | How many videos to process at the same time |
 | `--model` | `gemini-2.5-pro` | Gemini model to use |
 

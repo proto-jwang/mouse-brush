@@ -53,15 +53,15 @@ There are two mice in the video:
 - R = the mouse on the RIGHT side of the frame
 (Use screen-left / screen-right. Do NOT use the animal's anatomical left/right.)
 
-A human uses a small BRUSH to stimulate the BACK LEFT FOOT of each mouse.
+A human uses a small BRUSH to stimulate the left hind paw of each mouse.
 Each side (L and R) must be brushed EXACTLY ONCE per video. This is the expected normal case.
 
 Event definition:
-- The target is always the BACK LEFT FOOT of the mouse (the hind paw on the mouse's anatomical left side).
+- The target is always the left hind paw of the mouse (the hind paw on the mouse's anatomical left side).
 - Report a [start, end] frame-index RANGE for each brush contact:
     • start = the first frame (read from the top-right label) where the brush bristles are clearly
       and completely pressing against the paw (full contact begins).
-    • end   = the last frame where full brush-foot contact is maintained.
+    • end   = the last frame where full brush-paw contact is maintained.
 - Do NOT count partial contact, near-miss, or approach frames.
 
 Validity rule — set the field to null and explain in notes if ANY of the following is true:
@@ -83,7 +83,7 @@ _RANGE_SCHEMA: Dict[str, Any] = {
     "items": {"type": "integer"},
     "minItems": 2,
     "maxItems": 2,
-    "description": "[start_frame, end_frame] of full brush-foot contact.",
+    "description": "[start_frame, end_frame] of full brush-paw contact.",
 }
 
 RESPONSE_SCHEMA: Dict[str, Any] = {
