@@ -2,6 +2,12 @@
 
 Automated detection of brush-stimulation events in two-mouse experiment videos using Google Gemini.
 
+## Demo
+
+https://github.com/proto-jwang/mouse-brush/assets/group_1_vis.mp4
+
+> Detected brush frames are highlighted in **red**; all other frames use white labels.
+
 ## Overview
 
 This tool processes videos from a neuroscience experiment in which a researcher uses a small brush to stimulate the back left foot of two mice (left mouse = L, right mouse = R). It:
