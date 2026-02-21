@@ -4,19 +4,18 @@ Batch brush-event detector pipeline.
 For each video in --input-dir:
   1. Convert to 1 FPS (all frames preserved, no skipping)
   2. Burn frame index (0-based) into top-right corner  →  <stem>_labeled.mp4
-  3. Upload labeled video to Gemini, detect brush-onset frames (L / R)
+  3. Upload labeled video to Gemini, detect brush-contact frame ranges (L / R)
   4. Save JSON result  →  <output-dir>/<stem>/result.json
+     L and R are [start, end] frame-index ranges, or null.
   5. (optional --visualize) Save visualization video where the detected brush
-     frame and the next --n-brushed-frames frames are highlighted in red
-     →  <output-dir>/<stem>/<stem>_vis.mp4
+     range is highlighted in red  →  <output-dir>/<stem>/<stem>_vis.mp4
 
 Usage:
   python pipeline.py \\
       --input-dir  /path/to/videos \\
       --output-dir /path/to/results \\
       [--model gemini-3-flash-preview] \\
-      [--visualize] \\
-      [--n-brushed-frames 5]
+      [--visualize]
 
 Requirements:
   pip install -U google-genai
@@ -59,38 +58,46 @@ Each side (L and R) must be brushed EXACTLY ONCE per video. This is the expected
 
 Event definition:
 - The target is always the BACK LEFT FOOT of the mouse (the hind paw on the mouse's anatomical left side).
-- The event frame is the frame index (read from the top-right label) where the brush is in FULL
-  contact with the back left foot — meaning the brush bristles are clearly and completely pressing
-  against the paw, not just touching the edge or approaching.
-- If full contact spans multiple frames, report the FIRST frame where full contact is achieved.
+- Report a [start, end] frame-index RANGE for each brush contact:
+    • start = the first frame (read from the top-right label) where the brush bristles are clearly
+      and completely pressing against the paw (full contact begins).
+    • end   = the last frame where full brush-foot contact is maintained.
 - Do NOT count partial contact, near-miss, or approach frames.
 
 Validity rule — set the field to null and explain in notes if ANY of the following is true:
 - The mouse is never brushed (0 events detected for that side).
 - The mouse is brushed MORE THAN ONCE (2+ distinct brush contacts detected for that side).
 - You cannot confidently determine whether exactly one full brush-foot contact occurred.
-Do NOT guess. Only return an integer when you are confident there is exactly one clear event.
+Do NOT guess. Only return a range when you are confident there is exactly one clear event.
 
 Return strictly valid JSON matching this schema:
 {
-  "L": integer or null,
-  "R": integer or null,
+  "L": [start_frame, end_frame] or null,
+  "R": [start_frame, end_frame] or null,
   "notes": string
 }
 """
+
+_RANGE_SCHEMA: Dict[str, Any] = {
+    "type": "array",
+    "items": {"type": "integer"},
+    "minItems": 2,
+    "maxItems": 2,
+    "description": "[start_frame, end_frame] of full brush-foot contact.",
+}
 
 RESPONSE_SCHEMA: Dict[str, Any] = {
     "type": "object",
     "properties": {
         "L": {
-            "type": "integer",
+            **_RANGE_SCHEMA,
             "nullable": True,
-            "description": "Frame index of full brush-foot contact for LEFT mouse (screen-left).",
+            "description": "[start, end] frame range of brush contact for LEFT mouse (screen-left), or null.",
         },
         "R": {
-            "type": "integer",
+            **_RANGE_SCHEMA,
             "nullable": True,
-            "description": "Frame index of full brush-foot contact for RIGHT mouse (screen-right).",
+            "description": "[start, end] frame range of brush contact for RIGHT mouse (screen-right), or null.",
         },
         "notes": {"type": "string"},
     },
@@ -155,37 +162,38 @@ def _make_labeled(src_1fps: str, dst: str) -> None:
     _run_ffmpeg(["-i", src_1fps, "-vf", _DT_BASE + ":fontcolor=white", dst])
 
 
-def _highlight_expr(L: Optional[int], R: Optional[int], n: int) -> Optional[str]:
+def _highlight_expr(
+    L_range: Optional[List[int]], R_range: Optional[List[int]]
+) -> Optional[str]:
     """
     Build an ffmpeg expression that evaluates to >0 for any highlighted frame.
 
-    Highlighted = [L, L+n] union [R, R+n] (whichever are not None).
+    Highlighted = [L_range[0], L_range[1]] union [R_range[0], R_range[1]].
     Commas inside between() are escaped as \\, so the filtergraph parser
     forwards them correctly to the expression evaluator.
     """
     parts: List[str] = []
-    if L is not None:
-        parts.append(f"between(n\\,{L}\\,{L + n})")
-    if R is not None:
-        parts.append(f"between(n\\,{R}\\,{R + n})")
+    if L_range is not None:
+        parts.append(f"between(n\\,{L_range[0]}\\,{L_range[1]})")
+    if R_range is not None:
+        parts.append(f"between(n\\,{R_range[0]}\\,{R_range[1]})")
     return "+".join(parts) if parts else None
 
 
 def _make_visualization(
     src_1fps: str,
     dst: str,
-    L: Optional[int],
-    R: Optional[int],
-    n_brushed_frames: int,
+    L_range: Optional[List[int]],
+    R_range: Optional[List[int]],
     vis_fps: int = 10,
 ) -> None:
     """
     Create visualization video from the unlabeled 1-fps source:
-      - Normal frames  → white 'Frame N' label
-      - Brush-onset frame and the next n_brushed_frames frames → red 'Frame N' label
+      - Normal frames              → white 'Frame N' label
+      - Brush-contact range frames → red 'Frame N' label
     Output is re-encoded at vis_fps so each original frame is held for vis_fps display frames.
     """
-    hi = _highlight_expr(L, R, n_brushed_frames)
+    hi = _highlight_expr(L_range, R_range)
     if hi is None:
         # No events detected — just white labels, same as labeled video
         vf = _DT_BASE + ":fontcolor=white"
@@ -265,8 +273,15 @@ def _detect_brush_events(
     # Type validation
     for key in ("L", "R"):
         val = result[key]
-        if val is not None and not isinstance(val, int):
-            raise TypeError(f'Expected "{key}" to be int or null, got {type(val)}')
+        if val is not None:
+            if (
+                not isinstance(val, list)
+                or len(val) != 2
+                or not all(isinstance(v, int) for v in val)
+            ):
+                raise TypeError(
+                    f'Expected "{key}" to be [int, int] or null, got {val!r}'
+                )
     if not isinstance(result["notes"], str):
         result["notes"] = str(result["notes"])
 
@@ -282,7 +297,6 @@ def _process_video(
     model: str,
     temperature: float,
     visualize: bool,
-    n_brushed_frames: int,
     vis_fps: int = 10,
 ) -> None:
     stem = video_path.stem
@@ -324,7 +338,7 @@ def _process_video(
             print(f"{tag} [vis] Generating visualization video ({vis_fps} FPS) ...", flush=True)
             _make_visualization(
                 str(tmp_1fps), str(vis_mp4),
-                result["L"], result["R"], n_brushed_frames, vis_fps,
+                result["L"], result["R"], vis_fps,
             )
             print(f"{tag} Saved: {vis_mp4}")
 
@@ -349,8 +363,8 @@ def main() -> None:
         help="Root directory for all outputs (one sub-folder per video).",
     )
     parser.add_argument(
-        "--model", default="gemini-2.5-pro",
-        help="Gemini model name (default: gemini-2.5-pro).",
+        "--model", default="gemini-3.1-pro-preview",
+        help="Gemini model name (default: gemini-3.1-pro-preview).",
     )
     parser.add_argument(
         "--temperature", type=float, default=0.0,
@@ -358,11 +372,7 @@ def main() -> None:
     )
     parser.add_argument(
         "--visualize", action="store_true",
-        help="Save a visualization video highlighting detected brush frames in red.",
-    )
-    parser.add_argument(
-        "--n-brushed-frames", type=int, default=5,
-        help="Number of frames after brush onset to highlight in red (default: 5).",
+        help="Save a visualization video highlighting detected brush ranges in red.",
     )
     parser.add_argument(
         "--vis-fps", type=int, default=10,
@@ -408,7 +418,7 @@ def main() -> None:
                 _process_video,
                 video_path, output_dir,
                 client, args.model, args.temperature,
-                args.visualize, args.n_brushed_frames, args.vis_fps,
+                args.visualize, args.vis_fps,
             ): video_path
             for video_path in videos
         }
