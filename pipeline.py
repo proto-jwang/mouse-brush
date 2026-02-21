@@ -343,9 +343,11 @@ def _process_video(
             print(f"{tag} Saved: {vis_mp4}")
 
     finally:
-        # Always clean up the unlabeled 1-fps intermediate
+        # Always clean up intermediates
         if tmp_1fps.exists():
             tmp_1fps.unlink()
+        if labeled_mp4.exists():
+            labeled_mp4.unlink()
 
 
 # ── CLI ────────────────────────────────────────────────────────────────────────
