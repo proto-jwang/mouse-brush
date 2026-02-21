@@ -4,7 +4,7 @@ Automated detection of brush-stimulation events in two-mouse experiment videos u
 
 ## Demo
 
-https://github.com/proto-jwang/mouse-brush/assets/group_1_vis.mp4
+https://github.com/user-attachments/assets/3133d97f-0f17-4ca2-9beb-503e0e67b106
 
 > Detected brush frames are highlighted in **red**; all other frames use white labels.
 
