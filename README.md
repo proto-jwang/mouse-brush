@@ -15,7 +15,7 @@ This tool automatically finds the exact video frame when a researcher brushes th
 1. Takes your experiment videos as input
 2. Converts each video to 1 frame per second (so every original frame is preserved)
 3. Numbers each frame visibly in the top-right corner
-4. Sends the video to Google's Gemini AI, which watches the video and identifies the exact frame where the brush makes full contact with each mouse's paw
+4. Sends the video to Google's Gemini AI, which watches the video and identifies the frame range [start, end] where the brush makes full contact with each mouse's left hind paw
 5. Saves the result as a JSON file (left mouse = `L`, right mouse = `R`)
 6. Optionally saves a new video with the detected frames highlighted in red
 
@@ -317,8 +317,7 @@ For each video, a sub-folder is created under `results/`:
 ```
 results/
   group_1/
-    group_1_labeled.mp4    ← video with frame numbers burned in
-    result.json            ← detected frame indices
+    result.json            ← detected frame ranges
     group_1_vis.mp4        ← visualization with red highlights (if --visualize)
 ```
 
@@ -346,8 +345,10 @@ results/
 | `--input-dir` | *(required)* | Folder containing your video files |
 | `--output-dir` | *(required)* | Folder where results will be saved |
 | `--visualize` | off | Also save a video with brush frames highlighted in red |
+| `--vis-fps` | `10` | FPS of the output visualization video |
 | `--workers` | `4` | How many videos to process at the same time |
 | `--model` | `gemini-2.5-pro` | Gemini model to use |
+| `--force` | off | Reprocess all videos, ignoring any existing results |
 
 ## Supported Video Formats
 
@@ -361,3 +362,4 @@ results/
 - The AI only counts **full brush-paw contact** — partial contact or near-miss frames are ignored.
 - Each mouse must be brushed **exactly once** per video. If a mouse is not brushed, or is brushed more than once, the result will be `null`.
 - The tool automatically retries if the Gemini API is temporarily unavailable.
+- Results are **cached**: if `result.json` already exists for a video, Gemini detection is skipped. Likewise, if the visualization video already exists, it is not regenerated. Use `--force` to reprocess everything.

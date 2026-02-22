@@ -2,20 +2,25 @@
 Batch brush-event detector pipeline.
 
 For each video in --input-dir:
-  1. Convert to 1 FPS (all frames preserved, no skipping)
-  2. Burn frame index (0-based) into top-right corner  →  <stem>_labeled.mp4
+  1. Convert to 1 FPS if needed (all frames preserved, no skipping)
+  2. Burn frame index (0-based) into top-right corner (temporary intermediate)
   3. Upload labeled video to Gemini, detect brush-contact frame ranges (L / R)
   4. Save JSON result  →  <output-dir>/<stem>/result.json
      L and R are [start, end] frame-index ranges, or null.
   5. (optional --visualize) Save visualization video where the detected brush
      range is highlighted in red  →  <output-dir>/<stem>/<stem>_vis.mp4
 
+Caching: if result.json already exists, Gemini detection is skipped.
+         if <stem>_vis.mp4 already exists, visualization is skipped.
+         Use --force to ignore existing results and reprocess everything.
+
 Usage:
   python pipeline.py \\
       --input-dir  /path/to/videos \\
       --output-dir /path/to/results \\
-      [--model gemini-3-flash-preview] \\
-      [--visualize]
+      [--model gemini-2.5-pro] \\
+      [--visualize] \\
+      [--force]
 
 Requirements:
   pip install -U google-genai
@@ -67,7 +72,7 @@ Event definition:
 Validity rule — set the field to null and explain in notes if ANY of the following is true:
 - The mouse is never brushed (0 events detected for that side).
 - The mouse is brushed MORE THAN ONCE (2+ distinct brush contacts detected for that side).
-- You cannot confidently determine whether exactly one full brush-foot contact occurred.
+- You cannot confidently determine whether exactly one full brush-paw contact occurred.
 Do NOT guess. Only return a range when you are confident there is exactly one clear event.
 
 Return strictly valid JSON matching this schema:
@@ -298,6 +303,7 @@ def _process_video(
     temperature: float,
     visualize: bool,
     vis_fps: int = 10,
+    force: bool = False,
 ) -> None:
     stem = video_path.stem
     out_sub = output_dir / stem
@@ -311,41 +317,64 @@ def _process_video(
     tag = f"[{stem}]"
     print(f"\n{'='*60}\n{tag} Processing: {video_path.name}", flush=True)
 
+    # Determine what needs to be done
+    need_detection = force or not result_json.exists()
+    need_vis = visualize and (force or not vis_mp4.exists())
+
+    if not need_detection and not need_vis:
+        print(f"{tag} Already complete — skipping (use --force to reprocess).", flush=True)
+        return
+
     try:
-        # Step 1 — Convert to 1 FPS if needed
-        orig_fps = _get_orig_fps(str(video_path))
-        print(f"{tag} Original FPS : {orig_fps}")
-        if orig_fps == 1.0:
-            print(f"{tag} [1/3] Already 1 FPS — skipping conversion.", flush=True)
-            src_1fps = str(video_path)
+        if need_detection:
+            # Step 1 — Convert to 1 FPS if needed
+            orig_fps = _get_orig_fps(str(video_path))
+            print(f"{tag} Original FPS : {orig_fps}")
+            if orig_fps == 1.0:
+                print(f"{tag} [1/3] Already 1 FPS — skipping conversion.", flush=True)
+                src_1fps = str(video_path)
+            else:
+                print(f"{tag} [1/3] Converting to 1 FPS ...", flush=True)
+                _make_1fps(str(video_path), str(tmp_1fps), orig_fps)
+                src_1fps = str(tmp_1fps)
+
+            # Step 2 — Burn white frame-index labels (for Gemini upload)
+            print(f"{tag} [2/3] Burning frame labels ...", flush=True)
+            _make_labeled(src_1fps, str(labeled_mp4))
+
+            # Step 3 — Gemini detection
+            print(f"{tag} [3/3] Uploading to Gemini & detecting ...", flush=True)
+            result = _detect_brush_events(str(labeled_mp4), client, model, temperature)
+            print(f"{tag} L={result['L']}  R={result['R']}")
+            print(f"{tag} Notes: {result['notes']}")
+
+            # Save JSON
+            result["video"] = video_path.name
+            result_json.write_text(json.dumps(result, indent=2, ensure_ascii=False))
+            print(f"{tag} Saved: {result_json}")
         else:
-            print(f"{tag} [1/3] Converting to 1 FPS ...", flush=True)
-            _make_1fps(str(video_path), str(tmp_1fps), orig_fps)
-            src_1fps = str(tmp_1fps)
-
-        # Step 2 — Burn white frame-index labels (for Gemini upload)
-        print(f"{tag} [2/3] Burning frame labels ...", flush=True)
-        _make_labeled(src_1fps, str(labeled_mp4))
-
-        # Step 3 — Gemini detection
-        print(f"{tag} [3/3] Uploading to Gemini & detecting ...", flush=True)
-        result = _detect_brush_events(str(labeled_mp4), client, model, temperature)
-        print(f"{tag} L={result['L']}  R={result['R']}")
-        print(f"{tag} Notes: {result['notes']}")
-
-        # Save JSON
-        result["video"] = video_path.name
-        result_json.write_text(json.dumps(result, indent=2, ensure_ascii=False))
-        print(f"{tag} Saved: {result_json}")
+            print(f"{tag} result.json exists — skipping Gemini detection.", flush=True)
+            result = json.loads(result_json.read_text())
+            src_1fps = None  # not needed if detection is skipped
 
         # Optional visualization
-        if visualize:
+        if need_vis:
+            if src_1fps is None:
+                # Detection was skipped; still need the 1-fps source for vis
+                orig_fps = _get_orig_fps(str(video_path))
+                if orig_fps == 1.0:
+                    src_1fps = str(video_path)
+                else:
+                    _make_1fps(str(video_path), str(tmp_1fps), orig_fps)
+                    src_1fps = str(tmp_1fps)
             print(f"{tag} [vis] Generating visualization video ({vis_fps} FPS) ...", flush=True)
             _make_visualization(
                 src_1fps, str(vis_mp4),
                 result["L"], result["R"], vis_fps,
             )
             print(f"{tag} Saved: {vis_mp4}")
+        elif visualize:
+            print(f"{tag} vis video exists — skipping visualization.", flush=True)
 
     finally:
         # Always clean up intermediates
@@ -389,6 +418,10 @@ def main() -> None:
         "--workers", type=int, default=4,
         help="Number of videos to process in parallel (default: 4).",
     )
+    parser.add_argument(
+        "--force", action="store_true",
+        help="Reprocess all videos, ignoring any existing results.",
+    )
     args = parser.parse_args()
 
     input_dir  = Path(args.input_dir)
@@ -425,7 +458,7 @@ def main() -> None:
                 _process_video,
                 video_path, output_dir,
                 client, args.model, args.temperature,
-                args.visualize, args.vis_fps,
+                args.visualize, args.vis_fps, args.force,
             ): video_path
             for video_path in videos
         }
