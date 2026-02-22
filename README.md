@@ -347,7 +347,7 @@ results/
 | `--visualize` | off | Also save a video with brush frames highlighted in red |
 | `--vis-fps` | `10` | FPS of the output visualization video |
 | `--workers` | `4` | How many videos to process at the same time |
-| `--model` | `gemini-2.5-pro` | Gemini model to use |
+| `--model` | `gemini-3.1-pro-preview` | Gemini model to use |
 | `--force` | off | Reprocess all videos, ignoring any existing results |
 
 ## Supported Video Formats
